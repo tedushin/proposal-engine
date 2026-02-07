@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品提案書ジェネレーター</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar / Input Area -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <h1>Proposal<br>Engine v5</h1>
+            </div>
+
+            <form id="proposal-form">
+                <div class="form-group">
+                    <label for="product_name">商品名</label>
+                    <input type="text" id="product_name" placeholder="例: 獺祭 磨き二割三分" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="price">納品価格</label>
+                    <input type="text" id="price" placeholder="例: 5,000円" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="capacity">容量</label>
+                    <input type="text" id="capacity" placeholder="例: 720ml" required>
+                </div>
+
+                <button type="button" id="search-btn" class="primary-btn">
+                    <span class="icon">🔍</span> 情報・画像を検索
+                </button>
+            </form>
+
+            <div id="image-selection-area" class="hidden">
+                <h2>画像を選択</h2>
+                <div id="image-grid" class="image-grid">
+                    <!-- Images will be injected here -->
+                </div>
+                <button type="button" id="generate-btn" class="accent-btn" disabled>
+                    <span class="icon">✨</span> 提案書を作成する
+                </button>
+            </div>
+
+            <div id="loading-overlay" class="hidden">
+                <div class="spinner"></div>
+                <p id="loading-text">処理中...</p>
+            </div>
+        </aside>
+
+        <!-- Main Preview Area -->
+        <main class="preview-area">
+            <div class="toolbar no-print">
+                <button onclick="window.print()" class="secondary-btn">🖨️ PDF保存 / 印刷</button>
+            </div>
+
+            <!-- This container mirrors the A4 layout from v4 -->
+            <div id="proposal-preview" class="a4-container">
+                <div class="placeholder-message">
+                    左側のフォームから商品を検索してください。<br>
+                    AIが最適な提案書を作成します。
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

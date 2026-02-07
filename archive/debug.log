@@ -1,0 +1,20 @@
+/Users/tedushin/.gemini/antigravity/brain/cc974686-02fa-4b8f-ae9f-2eab9a8a5044/create_proposal.py:6: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+2026-02-06 17:34:42,020 - INFO - Searching for information on: 獺祭 純米大吟醸 磨き二割三分
+2026-02-06 17:34:42,754 - INFO - response: https://grokipedia.com/api/typeahead?query=%E7%8D%BA%E7%A5%AD+%E7%B4%94%E7%B1%B3%E5%A4%A7%E5%90%9F%E9%86%B8+%E7%A3%A8%E3%81%8D%E4%BA%8C%E5%89%B2%E4%B8%89%E5%88%86+%E5%85%AC%E5%BC%8F+%E7%89%B9%E5%BE%B4+%E3%83%AC%E3%83%93%E3%83%A5%E3%83%BC&limit=1 200
+2026-02-06 17:34:42,927 - INFO - response: https://ja.wikipedia.org/w/api.php?action=opensearch&limit=1&profile=fuzzy&search=%E7%8D%BA%E7%A5%AD%20%E7%B4%94%E7%B1%B3%E5%A4%A7%E5%90%9F%E9%86%B8%20%E7%A3%A8%E3%81%8D%E4%BA%8C%E5%89%B2%E4%B8%89%E5%88%86%20%E5%85%AC%E5%BC%8F%20%E7%89%B9%E5%BE%B4%20%E3%83%AC%E3%83%93%E3%83%A5%E3%83%BC 200
+2026-02-06 17:34:45,965 - INFO - response: https://yandex.ru/search/site/?text=%E7%8D%BA%E7%A5%AD%20%E7%B4%94%E7%B1%B3%E5%A4%A7%E5%90%9F%E9%86%B8%20%E7%A3%A8%E3%81%8D%E4%BA%8C%E5%89%B2%E4%B8%89%E5%88%86%20%E5%85%AC%E5%BC%8F%20%E7%89%B9%E5%BE%B4%20%E3%83%AC%E3%83%93%E3%83%A5%E3%83%BC&web=1&searchid=1733198&rdrnd=857548&lr=213&redircnt=1770366883.1 200
+2026-02-06 17:34:46,019 - INFO - Searching for image of: 獺祭 純米大吟醸 磨き二割三分
+2026-02-06 17:34:46,509 - INFO - response: https://duckduckgo.com/?q=%E7%8D%BA%E7%A5%AD+%E7%B4%94%E7%B1%B3%E5%A4%A7%E5%90%9F%E9%86%B8+%E7%A3%A8%E3%81%8D%E4%BA%8C%E5%89%B2%E4%B8%89%E5%88%86+%E5%95%86%E5%93%81%E7%94%BB%E5%83%8F+%E7%99%BD%E8%83%8C%E6%99%AF 200
+2026-02-06 17:34:47,217 - INFO - response: https://duckduckgo.com/i.js?o=json&q=%E7%8D%BA%E7%A5%AD+%E7%B4%94%E7%B1%B3%E5%A4%A7%E5%90%9F%E9%86%B8+%E7%A3%A8%E3%81%8D%E4%BA%8C%E5%89%B2%E4%B8%89%E5%88%86+%E5%95%86%E5%93%81%E7%94%BB%E5%83%8F+%E7%99%BD%E8%83%8C%E6%99%AF&l=jp-jp&vqd=4-334343453538831181524117068789542328424&p=1 200
+2026-02-06 17:34:47,326 - INFO - Generating content with Gemini...
+2026-02-06 17:34:59,080 - INFO - Creating HTML output: proposal_獺祭_純米大吟醸_磨き二割三分.html
+2026-02-06 17:34:59,089 - INFO - Proposal saved to proposal_獺祭_純米大吟醸_磨き二割三分.html
+Successfully created proposal: proposal_獺祭_純米大吟醸_磨き二割三分.html
