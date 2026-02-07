@@ -35,19 +35,27 @@
 - [x] **Project Setup**
     - [x] 必要なライブラリのインストール (`fastapi`, `uvicorn`, `python-multipart` 等)
     - [x] ディレクトリ構造の作成 (`static/`, `templates/`)
-- [ ] **Backend Implementation (FastAPI)**
-    - [ ] `app_v5.py` の作成
-    - [ ] 既存ロジック (`create_proposal_v4.py`) の移植とAPI化 (3 step)
-        - [ ] `/api/search` (商品検索)
-        - [ ] `/api/images` (画像検索)
-        - [ ] `/api/generate` (提案書生成)
-- [ ] **Frontend Implementation**
-    - [ ] `static/index.html` (メインUI) の作成
-    - [ ] `static/style.css` (モダンでプレミアムなデザイン) の作成
-    - [ ] `static/app.js` (Web UIロジック) の作成
-- [ ] **Integration & Testing**
-    - [ ] 検索・画像選択・生成フローの結合テスト
-    - [ ] PDF保存/印刷機能の確認
-- [ ] **Final Polish**
-    - [ ] デザイン微調整
-    - [ ] エラーハンドリングの強化
+- [x] **Backend Implementation (FastAPI)**
+    - [x] `app_v5.py` の作成
+    - [x] 既存ロジック (`create_proposal_v4.py`) の移植とAPI化 (3 step)
+        - [x] `/api/search` (商品検索)
+        - [x] `/api/images` (画像検索)
+        - [x] `/api/generate` (提案書生成)
+- [x] **Frontend Implementation**
+    - [x] `static/index.html` (メインUI) の作成
+    - [x] `static/style.css` (モダンでプレミアムなデザイン) の作成
+    - [x] `static/app.js` (Web UIロジック) の作成
+- [x] **Integration & Testing**
+    - [x] 検索・画像選択・生成フローの結合テスト
+    - [x] PDF保存/印刷機能の確認
+- [x] **Final Polish**
+    - [x] デザイン微調整
+    - [x] エラーハンドリングの強化
+
+## Phase 6: Editing Features (v5.1)
+- [ ] **Context Editing (Comment/Text)**
+    - [ ] 既に `contenteditable` は設定済みだが、保存時や編集の挙動を確認・強化する。
+- [ ] **Image Replacement**
+    - [ ] メイン画像をクリックした際に、サイドバーで選択中の画像を反映させる、またはURLを直接入力して差し替える機能の実装。
+    - [ ] あるいは、画像のドラッグ＆ドロップ対応（任意ファイルをアップロード）も検討。
+    - [ ] 今回はまず、「メイン画像をクリックしたら、現在サイドバーで選択されている画像に差し変わる」機能を実装する。

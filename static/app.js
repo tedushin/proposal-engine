@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- State ---
     let productContext = "";
     let selectedImageUrl = "";
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         showLoading("商品情報と画像を検索中...");
-        
+
         try {
             // Parallel Requests: Context & Images
             const [searchRes, imageRes] = await Promise.all([
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Render Images
             imageGrid.innerHTML = '';
             selectedImageUrl = ''; // Reset selection
-            
+
             if (imageData.images && imageData.images.length > 0) {
                 imageData.images.forEach(url => {
                     const div = document.createElement('div');
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     div.onclick = () => selectImage(div, url);
                     imageGrid.appendChild(div);
                 });
-                
+
                 // Show Selection Area
                 imageSelectionArea.classList.remove('hidden');
                 generateBtn.disabled = true; // Disable until image is picked
@@ -92,13 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectImage(element, url) {
         // Remove previous selection
         document.querySelectorAll('.image-item.selected').forEach(el => el.classList.remove('selected'));
-        
+
         // Add new selection
         element.classList.add('selected');
         selectedImageUrl = url;
-        
+
         // Enable Generate Button
         generateBtn.disabled = false;
+
+        // NEW: If proposal is already generated, update the image immediately
+        const mainImage = document.querySelector('.product-image img');
+        if (mainImage) {
+            mainImage.src = url;
+        }
     }
 
 
@@ -197,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         proposalPreview.innerHTML = html;
-        
+
         // Scroll to preview on mobile
         if (window.innerWidth < 1000) {
             proposalPreview.scrollIntoView({ behavior: 'smooth' });
