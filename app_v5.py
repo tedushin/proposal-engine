@@ -35,6 +35,8 @@ class GenerateProposalRequest(BaseModel):
     image_url: str
     context: str
 
+import requests
+
 # Helper Functions (Adapted from create_proposal_v4.py)
 def search_product_info(product_name):
     """Searches for product information using Brave Search."""
