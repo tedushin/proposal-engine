@@ -35,69 +35,74 @@ class GenerateProposalRequest(BaseModel):
     image_url: str
     context: str
 
-import requests
-
 # Helper Functions (Adapted from create_proposal_v4.py)
 def search_product_info(product_name):
-    """Searches for product information using Google Custom Search."""
+    """Searches for product information using Brave Search."""
     logging.info(f"Searching for information on: {product_name}")
-    api_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY')
-    cse_id = os.environ.get('GOOGLE_CSE_ID')
+    api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
     
-    if not api_key or not cse_id:
-        logging.error("Google API Key or CSE ID not found in environment variables.")
+    if not api_key:
+        logging.error("Brave Search API Key not found in environment variables.")
         return ""
 
-    url = "https://www.googleapis.com/customsearch/v1"
+    url = "https://api.search.brave.com/res/v1/web/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": api_key
+    }
     params = {
-        'key': api_key,
-        'cx': cse_id,
-        'q': f"{product_name} 公式 特徴 レビュー",
-        'num': 5
+        "q": f"{product_name} 公式 特徴 レビュー",
+        "count": 5,
+        "country": "jp",
+        "search_lang": "jp"
     }
     
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        results = response.json().get('items', [])
+        results = response.json().get('web', {}).get('results', [])
         
         context = ""
         if results:
             for r in results:
-                context += f"Title: {r.get('title')}\nSnippet: {r.get('snippet')}\nURL: {r.get('link')}\n\n"
+                context += f"Title: {r.get('title')}\nSnippet: {r.get('description')}\nURL: {r.get('url')}\n\n"
         else:
              logging.warning("No search results found.")
         return context
     except Exception as e:
-        logging.error(f"Google Search failed: {e}")
+        logging.error(f"Brave Search failed: {e}")
         return ""
 
 def search_product_images(product_name, count=20):
-    """Searches for multiple product images using Google Custom Search."""
+    """Searches for product images using Brave Search."""
     logging.info(f"Searching for {count} images of: {product_name}")
-    api_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY')
-    cse_id = os.environ.get('GOOGLE_CSE_ID')
+    api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
 
-    if not api_key or not cse_id:
-        logging.error("Google API Key or CSE ID not found in environment variables.")
+    if not api_key:
+        logging.error("Brave Search API Key not found in environment variables.")
         return []
 
-    url = "https://www.googleapis.com/customsearch/v1"
+    url = "https://api.search.brave.com/res/v1/images/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": api_key
+    }
     params = {
-        'key': api_key,
-        'cx': cse_id,
-        'q': f"{product_name} 商品画像 白背景",
-        'searchType': 'image',
-        'num': min(count, 10) # Custom search returns max 10 per request
+        "q": f"{product_name} 商品画像 白背景",
+        "count": count,
+        "country": "jp",
+        "search_lang": "jp"
     }
     
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        items = response.json().get('items', [])
-        return [item['link'] for item in items]
+        results = response.json().get('results', [])
+        return [r.get('properties', {}).get('url') for r in results if r.get('properties', {}).get('url')]
     except Exception as e:
-        logging.error(f"Google Image search failed: {e}")
+        logging.error(f"Brave Image search failed: {e}")
     return []
 
 def generate_proposal_content_gemini(api_key, product_name, price, capacity, context):
