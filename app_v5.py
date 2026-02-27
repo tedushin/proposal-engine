@@ -35,37 +35,69 @@ class GenerateProposalRequest(BaseModel):
     image_url: str
     context: str
 
+import requests
+
 # Helper Functions (Adapted from create_proposal_v4.py)
 def search_product_info(product_name):
-    """Searches for product information using DuckDuckGo."""
+    """Searches for product information using Google Custom Search."""
     logging.info(f"Searching for information on: {product_name}")
+    api_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY')
+    cse_id = os.environ.get('GOOGLE_CSE_ID')
+    
+    if not api_key or not cse_id:
+        logging.error("Google API Key or CSE ID not found in environment variables.")
+        return ""
+
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        'key': api_key,
+        'cx': cse_id,
+        'q': f"{product_name} 公式 特徴 レビュー",
+        'num': 5
+    }
+    
     try:
-        with DDGS(timeout=15) as ddgs:
-            results = [r for r in ddgs.text(f"{product_name} 公式 特徴 レビュー", region='jp-jp', max_results=5)]
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        results = response.json().get('items', [])
         
         context = ""
         if results:
             for r in results:
-                context += f"Title: {r['title']}\nSnippet: {r['body']}\nURL: {r['href']}\n\n"
+                context += f"Title: {r.get('title')}\nSnippet: {r.get('snippet')}\nURL: {r.get('link')}\n\n"
         else:
              logging.warning("No search results found.")
         return context
     except Exception as e:
-        logging.error(f"Search failed: {e}")
+        logging.error(f"Google Search failed: {e}")
         return ""
 
 def search_product_images(product_name, count=20):
-    """Searches for multiple product images using DuckDuckGo."""
+    """Searches for multiple product images using Google Custom Search."""
     logging.info(f"Searching for {count} images of: {product_name}")
+    api_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY')
+    cse_id = os.environ.get('GOOGLE_CSE_ID')
+
+    if not api_key or not cse_id:
+        logging.error("Google API Key or CSE ID not found in environment variables.")
+        return []
+
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        'key': api_key,
+        'cx': cse_id,
+        'q': f"{product_name} 商品画像 白背景",
+        'searchType': 'image',
+        'num': min(count, 10) # Custom search returns max 10 per request
+    }
+    
     try:
-        with DDGS(timeout=15) as ddgs:
-            # Added "white background" to query to get cleaner images
-            results = [r for r in ddgs.images(f"{product_name} 商品画像 白背景", region='jp-jp', max_results=count)]
-        
-        if results:
-            return [r['image'] for r in results]
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        items = response.json().get('items', [])
+        return [item['link'] for item in items]
     except Exception as e:
-        logging.error(f"Image search failed: {e}")
+        logging.error(f"Google Image search failed: {e}")
     return []
 
 def generate_proposal_content_gemini(api_key, product_name, price, capacity, context):
