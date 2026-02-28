@@ -28,6 +28,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideLoading = () => {
         loadingOverlay.classList.add('hidden');
     };
+    
+    // XSS対策用HTMLエスケープ関数
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        if (typeof unsafe !== 'string') unsafe = String(unsafe);
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
 
     // --- 1. Search Logic ---
     searchBtn.addEventListener('click', async () => {
@@ -67,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageData.images.forEach(url => {
                     const div = document.createElement('div');
                     div.className = 'image-item';
-                    div.innerHTML = `<img src="${url}" loading="lazy">`;
+                    div.innerHTML = `<img src="${escapeHtml(url)}" loading="lazy">`;
                     div.onclick = () => selectImage(div, url);
                     imageGrid.appendChild(div);
                 });
@@ -103,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // NEW: If proposal is already generated, update the image immediately
         const mainImage = document.querySelector('.product-image img');
         if (mainImage) {
-            mainImage.src = url;
+            mainImage.src = url; // Not escaped here because it's assigned to property, not HTML
         }
     }
 
@@ -160,12 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             <div class="hero-section">
                 <div class="product-image">
-                    <img src="${imageUrl}" alt="${data.product_name}">
+                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(data.product_name)}">
                 </div>
             </div>
 
             <div class="catch-copy" contenteditable="true">
-                ${data.catch_copy}
+                ${escapeHtml(data.catch_copy)}
             </div>
 
             <div class="info-grid">
@@ -173,8 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="section-title">お客様への3つのベネフィット</div>
                     ${data.benefits.map(b => `
                     <div class="benefit-card">
-                        <div class="benefit-title" contenteditable="true">${b.title}</div>
-                        <div class="benefit-detail" contenteditable="true">${b.detail}</div>
+                        <div class="benefit-title" contenteditable="true">${escapeHtml(b.title)}</div>
+                        <div class="benefit-detail" contenteditable="true">${escapeHtml(b.detail)}</div>
                     </div>
                     `).join('')}
                 </div>
@@ -182,14 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div>
                     <div class="section-title">商品情報</div>
                     <div class="specs-box">
-                        <h3 style="margin-top: 0; font-size: 16px;" contenteditable="true">${data.product_name}</h3>
+                        <h3 style="margin-top: 0; font-size: 16px;" contenteditable="true">${escapeHtml(data.product_name)}</h3>
                         <ul class="specs-list">
-                        ${data.product_specs.map(spec => `<li contenteditable="true">${spec}</li>`).join('')}
+                        ${data.product_specs.map(spec => `<li contenteditable="true">${escapeHtml(spec)}</li>`).join('')}
                         </ul>
                         
                         <div class="price-target-box">
-                            <div><span contenteditable="true">${data.capacity}</span>　<span class="price-group"><span class="price-label">納品価格</span> <span class="price-val" contenteditable="true">${data.price}</span><span class="tax-label">(税別)</span></span></div>
-                            <div class="target-val" contenteditable="true">ターゲット: ${data.target}</div>
+                            <div><span contenteditable="true">${escapeHtml(data.capacity)}</span>　<span class="price-group"><span class="price-label">納品価格</span> <span class="price-val" contenteditable="true">${escapeHtml(data.price)}</span><span class="tax-label">(税別)</span></span></div>
+                            <div class="target-val" contenteditable="true">ターゲット: ${escapeHtml(data.target)}</div>
                         </div>
                     </div>
                 </div>
@@ -197,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="comment-section">
                 <div class="comment-text" contenteditable="true">
-                    "${data.comment}"
+                    "${escapeHtml(data.comment)}"
                 </div>
             </div>
         `;

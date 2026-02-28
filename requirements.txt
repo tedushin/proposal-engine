@@ -1,4 +1,4 @@
-google-generativeai
+ddgs
 jinja2
 fastapi
 uvicorn

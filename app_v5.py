@@ -5,8 +5,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 import google.generativeai as genai
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -77,14 +78,15 @@ def search_product_info(product_name):
         return ""
 
 def search_product_images(product_name, count=20):
-    """Searches for product images using Brave Search."""
-    logging.info(f"Searching for {count} images of: {product_name}")
+    """Searches for multiple product images using Brave Search API."""
+    logging.info(f"Searching for {count} images of: {product_name} using Brave Search")
+    
     api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
-
     if not api_key:
-        logging.error("Brave Search API Key not found in environment variables.")
-        return []
-
+        logging.error("Brave Search API Key not found")
+        # Ensure we still return something (fallback)
+        return ["https://placehold.co/600x400?text=No+API+Key"]
+        
     url = "https://api.search.brave.com/res/v1/images/search"
     headers = {
         "Accept": "application/json",
@@ -92,19 +94,22 @@ def search_product_images(product_name, count=20):
         "X-Subscription-Token": api_key
     }
     params = {
-        "q": f"{product_name} 商品画像 白背景",
-        "count": count,
-        "country": "jp",
+        "q": f"{product_name} 商品画像",
+        "count": min(count, 50), # Max 50 per page for Brave
         "search_lang": "jp"
     }
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=15)
         response.raise_for_status()
-        results = response.json().get('results', [])
-        return [r.get('properties', {}).get('url') for r in results if r.get('properties', {}).get('url')]
+        data = response.json()
+        
+        results = data.get("results", [])
+        if results:
+            return [r.get("properties", {}).get("url", "") or r.get("url", "") for r in results]
     except Exception as e:
-        logging.error(f"Brave Image search failed: {e}")
+        logging.error(f"Image search failed: {e}")
+        
     return []
 
 def generate_proposal_content_gemini(api_key, product_name, price, capacity, context):
@@ -173,7 +178,8 @@ def generate_proposal_content_gemini(api_key, product_name, price, capacity, con
 # API Endpoints
 @app.get("/")
 async def read_root():
-    return HTMLResponse(content=open("static/index.html").read())
+    with open("static/index.html", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 @app.post("/api/search")
 async def api_search(request: ProductSearchRequest):
@@ -191,18 +197,23 @@ async def api_generate(request: GenerateProposalRequest):
     if not api_key:
         raise HTTPException(status_code=500, detail="Google/Gemini API Key not found")
     
-    data = generate_proposal_content_gemini(
-        api_key, 
-        request.product_name, 
-        request.price, 
-        request.capacity, 
-        request.context
-    )
-    
-    if not data:
-        raise HTTPException(status_code=500, detail="Failed to generate content")
+    try:
+        data = generate_proposal_content_gemini(
+            api_key, 
+            request.product_name, 
+            request.price, 
+            request.capacity, 
+            request.context
+        )
         
-    return data
+        if not data:
+            raise ValueError("Failed to parse Gemini response as JSON")
+            
+        return data
+    
+    except Exception as e:
+        logging.error(f"Generate API error: {e}")
+        raise HTTPException(status_code=500, detail="生成処理中にエラーが発生しました。時間を置いてから再試行してください。")
 
 if __name__ == "__main__":
     import uvicorn
