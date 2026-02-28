@@ -1,12 +1,15 @@
 import os
 import logging
 import json
+import time
+import random
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from ddgs import DDGS
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import requests
 from dotenv import load_dotenv
 
@@ -36,11 +39,9 @@ class GenerateProposalRequest(BaseModel):
     image_url: str
     context: str
 
-import requests
-
-# Helper Functions (Adapted from create_proposal_v4.py)
+# Helper Functions
 def search_product_info(product_name):
-    """Searches for product information using Brave Search."""
+    """Searches for product information using Brave Search with retry logic."""
     logging.info(f"Searching for information on: {product_name}")
     api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
     
@@ -61,30 +62,41 @@ def search_product_info(product_name):
         "search_lang": "jp"
     }
     
-    try:
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        results = response.json().get('web', {}).get('results', [])
-        
-        context = ""
-        if results:
-            for r in results:
-                context += f"Title: {r.get('title')}\nSnippet: {r.get('description')}\nURL: {r.get('url')}\n\n"
-        else:
-             logging.warning("No search results found.")
-        return context
-    except Exception as e:
-        logging.error(f"Brave Search failed: {e}")
-        return ""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=15)
+            if response.status_code == 429:
+                wait_time = (2 ** attempt) + random.random()
+                logging.warning(f"Brave Search rate limited (429). Retrying in {wait_time:.2f}s...")
+                time.sleep(wait_time)
+                continue
+                
+            response.raise_for_status()
+            results = response.json().get('web', {}).get('results', [])
+            
+            context = ""
+            if results:
+                for r in results:
+                    context += f"Title: {r.get('title')}\nSnippet: {r.get('description')}\nURL: {r.get('url')}\n\n"
+            else:
+                 logging.warning("No search results found.")
+            return context
+        except Exception as e:
+            logging.error(f"Brave Search failed (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt == max_retries - 1:
+                break
+            time.sleep(1)
+            
+    return ""
 
 def search_product_images(product_name, count=20):
-    """Searches for multiple product images using Brave Search API."""
+    """Searches for multiple product images using Brave Search API with retry logic."""
     logging.info(f"Searching for {count} images of: {product_name} using Brave Search")
     
     api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
     if not api_key:
         logging.error("Brave Search API Key not found")
-        # Ensure we still return something (fallback)
         return ["https://placehold.co/600x400?text=No+API+Key"]
         
     url = "https://api.search.brave.com/res/v1/images/search"
@@ -95,91 +107,121 @@ def search_product_images(product_name, count=20):
     }
     params = {
         "q": f"{product_name} 商品画像",
-        "count": min(count, 50), # Max 50 per page for Brave
+        "count": min(count, 50),
         "search_lang": "jp"
     }
     
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        
-        results = data.get("results", [])
-        if results:
-            return [r.get("properties", {}).get("url", "") or r.get("url", "") for r in results]
-    except Exception as e:
-        logging.error(f"Image search failed: {e}")
-        
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=15)
+            if response.status_code == 429:
+                wait_time = (2 ** attempt) + random.random()
+                logging.warning(f"Brave Image Search rate limited (429). Retrying in {wait_time:.2f}s...")
+                time.sleep(wait_time)
+                continue
+                
+            response.raise_for_status()
+            data = response.json()
+            results = data.get("results", [])
+            if results:
+                return [r.get("properties", {}).get("url", "") or r.get("url", "") for r in results]
+            break
+        except Exception as e:
+            logging.error(f"Image search failed (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt == max_retries - 1:
+                break
+            time.sleep(1)
+            
     return []
 
 def generate_proposal_content_gemini(api_key, product_name, price, capacity, context):
-    """Generates structured proposal content using Gemini API."""
-    logging.info("Generating content with Gemini...")
-    genai.configure(api_key=api_key)
+    """Generates structured proposal content using the new Google Gen AI SDK."""
+    logging.info("Generating content with Gemini (new SDK)...")
     
-    # Use the flash preview model as per previous configuration
-    model = genai.GenerativeModel('gemini-3-flash-preview') 
-
-    prompt = f"""
-    あなたはプロのセールスライターです。以下の商品情報をもとに、顧客（バイヤー）向けの提案書を作成するための情報をJSON形式で抽出・生成してください。
-    必ず有効なJSON形式で出力してください。Markdownのコードブロックは使用しないでください。
-
-    【商品名】
-    {product_name}
-
-    【価格】
-    {price}
-
-    【容量】
-    {capacity}
-
-    【検索された背景情報】
-    {context}
-
-    【要件】
-    1.  **catch_copy**: ひと目で興味を惹くキャッチコピー（20文字以内）。
-    2.  **benefits**: 主要なベネフィットを3つ。
-        - title: ベネフィットの見出し（15文字以内）
-        - detail: 詳細説明（50文字以内）
-    3.  **product_specs**: 商品の基本スペックや特徴を3〜5個の箇条書きで。
-    4.  **comment**: バイヤーへの推薦コメント（100文字程度）。ベネフィットを要約し、熱意を持って勧める文章。
-    5.  **target**: どのような顧客層に売れるか（例：30代主婦、健康志向の男性など）。
-
-    【出力JSONフォーマット】
-    {{
-        "product_name": "{product_name}",
-        "price": "{price}",
-        "capacity": "{capacity}",
-        "catch_copy": "...",
-        "benefits": [
-            {{"title": "...", "detail": "..."}},
-            {{"title": "...", "detail": "..."}},
-            {{"title": "...", "detail": "..."}}
-        ],
-        "product_specs": ["...", "..."],
-        "comment": "...",
-        "target": "..."
-    }}
-    """
     try:
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        # Initialize the new Gen AI client
+        client = genai.Client(api_key=api_key)
+        
+        # Use a stable current model
+        model_id = "gemini-2.0-flash" 
+
+        prompt = f"""
+        あなたはプロのセールスライターです。以下の商品情報をもとに、顧客（バイヤー）向けの提案書を作成するための情報をJSON形式で抽出・生成してください。
+        必ず有効なJSON形式で出力してください。Markdownのコードブロックは使用しないでください。
+
+        【商品名】
+        {product_name}
+
+        【価格】
+        {price}
+
+        【容量】
+        {capacity}
+
+        【検索された背景情報】
+        {context}
+
+        【要件】
+        1.  **catch_copy**: ひと目で興味を惹くキャッチコピー（20文字以内）。
+        2.  **benefits**: 主要なベネフィットを3つ。
+            - title: ベネフィットの見出し（15文字以内）
+            - detail: 詳細説明（50文字以内）
+        3.  **product_specs**: 商品の基本スペックや特徴を3〜5個の箇条書きで。
+        4.  **comment**: バイヤーへの推薦コメント（100文字程度）。ベネフィットを要約し、熱意を持って勧める文章。
+        5.  **target**: どのような顧客層に売れるか（例：30代主婦、健康志向の男性など）。
+
+        【出力JSONフォーマット】
+        {{
+            "product_name": "{product_name}",
+            "price": "{price}",
+            "capacity": "{capacity}",
+            "catch_copy": "...",
+            "benefits": [
+                {{"title": "...", "detail": "..."}},
+                {{"title": "...", "detail": "..."}},
+                {{"title": "...", "detail": "..."}}
+            ],
+            "product_specs": ["...", "..."],
+            "comment": "...",
+            "target": "..."
+        }}
+        """
+
+        response = client.models.generate_content(
+            model=model_id,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        
         text = response.text.strip()
+        # Clean up any potential markdown formatting
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
+            
         return json.loads(text.strip())
+        
     except Exception as e:
         logging.error(f"Gemini generation failed: {e}")
+        # Log specific error for region issues if available
+        if "location is not supported" in str(e):
+            logging.error("CRITICAL: User location is not supported by Gemini API.")
         return None
 
 # API Endpoints
 @app.get("/")
 async def read_root():
-    with open("static/index.html", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    try:
+        with open("static/index.html", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Error: static/index.html not found</h1>", status_code=404)
 
 @app.post("/api/search")
 async def api_search(request: ProductSearchRequest):
@@ -207,13 +249,16 @@ async def api_generate(request: GenerateProposalRequest):
         )
         
         if not data:
-            raise ValueError("Failed to parse Gemini response as JSON")
+            raise ValueError("Failed to obtain or parse Gemini response")
             
         return data
     
     except Exception as e:
         logging.error(f"Generate API error: {e}")
-        raise HTTPException(status_code=500, detail="生成処理中にエラーが発生しました。時間を置いてから再試行してください。")
+        error_msg = "生成処理中にエラーが発生しました。"
+        if "location is not supported" in str(e):
+            error_msg = "このリージョン（VPSの場所）からはGemini APIを利用できません。Google CloudのVertex AI経由にするなどの対策が必要です。"
+        raise HTTPException(status_code=500, detail=error_msg)
 
 if __name__ == "__main__":
     import uvicorn
