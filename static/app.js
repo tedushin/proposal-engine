@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="price-val" contenteditable="true">${escapeHtml(data.price)}</span>
                                 <span class="tax-label">(税別)</span>
                             </div>
-                            <div class="target-val" contenteditable="true">ターゲット: ${escapeHtml(data.target)}</div>
+                            <div class="target-val" contenteditable="true">生産者: ${escapeHtml(data.target)}</div>
                         </div>
                     </div>
                 </div>
