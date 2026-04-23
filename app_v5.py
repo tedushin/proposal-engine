@@ -192,10 +192,13 @@ Markdownのコードブロックは使わず、純粋なJSONのみ出力して�
 1. catch_copy: ひと目で興味を惹くキャッチコピー（20文字以内）
 2. brewery: 蔵元名・メーカー名（不明なら "不明"）
 3. origin: 産地（都道府県のみ。例 "山口県"。不明なら "不明"）
-4. benefits: 主要ベネフィット3つ。各 title(15字以内)・detail(50字以内)
+4. benefits: 必ず以下の3項目を順番に（配列）。各 title(15字以内)・detail(50字以内)
+    - 01: 味わいのコメント（香り・口当たり・余韻など）
+    - 02: 原材料のコメント（使用米・ぶどう品種・製法など）
+    - 03: ペアリングのコメント（相性の良い料理・シーン）
 5. product_specs: 基本スペック・特徴を3〜5個の箇条書き
 6. comment: バイヤーへの推薦コメント（100文字程度、熱意を持って）
-7. target: ターゲット顧客層（例 "30代主婦、健康志向の男性"）
+7. target: 蔵元の紹介（50文字以内。歴史・思想・特徴など）
 
 【出力JSON】
 {{"product_name":"{product_name}","price":"{price}","capacity":"{capacity}","catch_copy":"...","brewery":"...","origin":"...","benefits":[{{"title":"...","detail":"..."}}],"product_specs":["..."],"comment":"...","target":"..."}}"""
