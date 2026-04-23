@@ -141,7 +141,7 @@ def generate_proposal_content_gemini(api_key, product_name, price, capacity, con
     """Two-step Gemini: (1) ground via Google Search, (2) structure to JSON."""
     logging.info("Generating content with Gemini 2.0 Flash (grounded)...")
     client = genai.Client(api_key=api_key)
-    model_id = "gemini-2.0-flash"
+    model_id = "gemini-2.5-flash"
 
     # Step 1: Research with Google Search grounding
     research_prompt = f"""あなたは商品リサーチャーです。次の商品について Google検索で最新の正確な情報を収集し、日本語で詳しく整理してください。
