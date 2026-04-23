@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import anthropic
+from google import genai
+from google.genai import types as genai_types
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from typing import Optional
@@ -135,63 +137,79 @@ def search_product_images(product_name, count=20):
         logging.error(f"Brave image search failed: {e}")
         return []
 
-def generate_proposal_content_claude(api_key, product_name, price, capacity, context):
-    """Generates structured proposal content using Claude Haiku 4.5."""
-    logging.info("Generating content with Claude Haiku 4.5...")
-    client = anthropic.Anthropic(api_key=api_key)
+def generate_proposal_content_gemini(api_key, product_name, price, capacity, context):
+    """Two-step Gemini: (1) ground via Google Search, (2) structure to JSON."""
+    logging.info("Generating content with Gemini 2.0 Flash (grounded)...")
+    client = genai.Client(api_key=api_key)
+    model_id = "gemini-2.0-flash"
 
-    prompt = f"""
-    あなたはプロのセールスライターです。以下の商品情報をもとに、顧客（バイヤー）向けの提案書を作成するための情報をJSON形式で抽出・生成してください。
-    必ず有効なJSON形式で出力してください。Markdownのコードブロックは使用しないでください。
+    # Step 1: Research with Google Search grounding
+    research_prompt = f"""あなたは商品リサーチャーです。次の商品について Google検索で最新の正確な情報を収集し、日本語で詳しく整理してください。
 
-    【商品名】
-    {product_name}
+【商品名】 {product_name}
+【価格】 {price}
+【容量】 {capacity}
+【参考情報（任意）】 {context or "（なし）"}
 
-    【価格】
-    {price}
+調べる項目:
+- 蔵元・メーカー・ブランド
+- 産地（都道府県）
+- 品種/原料・製法
+- 味わい・香り・特徴
+- 受賞歴・評価
+- 推奨される飲み方・料理とのペアリング
+- 想定顧客層
 
-    【容量】
-    {capacity}
+箇条書きで、事実ベースで記述してください。不明な項目は「不明」と書いてください。"""
 
-    【検索された背景情報】
-    {context}
-
-    【要件】
-    1.  **catch_copy**: ひと目で興味を惹くキャッチコピー（20文字以内）。
-    2.  **brewery**: 蔵元名・メーカー名（分からなければ "不明"）。
-    3.  **origin**: 産地（都道府県。例："山口県"。分からなければ "不明"）。
-    4.  **benefits**: 主要なベネフィットを3つ。
-        - title: ベネフィットの見出し（15文字以内）
-        - detail: 詳細説明（50文字以内）
-    5.  **product_specs**: 商品の基本スペックや特徴を3〜5個の箇条書きで。
-    6.  **comment**: バイヤーへの推薦コメント（100文字程度）。ベネフィットを要約し、熱意を持って勧める文章。
-    7.  **target**: どのような顧客層に売れるか（例：30代主婦、健康志向の男性など）。
-
-    【出力JSONフォーマット】
-    {{
-        "product_name": "{product_name}",
-        "price": "{price}",
-        "capacity": "{capacity}",
-        "catch_copy": "...",
-        "brewery": "...",
-        "origin": "...",
-        "benefits": [
-            {{"title": "...", "detail": "..."}},
-            {{"title": "...", "detail": "..."}},
-            {{"title": "...", "detail": "..."}}
-        ],
-        "product_specs": ["...", "..."],
-        "comment": "...",
-        "target": "..."
-    }}
-    """
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
+        research = client.models.generate_content(
+            model=model_id,
+            contents=research_prompt,
+            config=genai_types.GenerateContentConfig(
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                temperature=0.3,
+            ),
         )
-        text = response.content[0].text.strip()
+        research_text = research.text or ""
+        logging.info(f"Research gathered: {len(research_text)} chars")
+    except Exception as e:
+        logging.error(f"Gemini grounding failed: {e}")
+        research_text = context or ""
+
+    # Step 2: Structure to JSON
+    schema_prompt = f"""以下のリサーチ結果をもとに、バイヤー向け提案書の情報をJSON形式で生成してください。
+Markdownのコードブロックは使わず、純粋なJSONのみ出力してください。
+
+【商品名】 {product_name}
+【価格】 {price}
+【容量】 {capacity}
+
+【リサーチ結果】
+{research_text}
+
+【要件】
+1. catch_copy: ひと目で興味を惹くキャッチコピー（20文字以内）
+2. brewery: 蔵元名・メーカー名（不明なら "不明"）
+3. origin: 産地（都道府県のみ。例 "山口県"。不明なら "不明"）
+4. benefits: 主要ベネフィット3つ。各 title(15字以内)・detail(50字以内)
+5. product_specs: 基本スペック・特徴を3〜5個の箇条書き
+6. comment: バイヤーへの推薦コメント（100文字程度、熱意を持って）
+7. target: ターゲット顧客層（例 "30代主婦、健康志向の男性"）
+
+【出力JSON】
+{{"product_name":"{product_name}","price":"{price}","capacity":"{capacity}","catch_copy":"...","brewery":"...","origin":"...","benefits":[{{"title":"...","detail":"..."}}],"product_specs":["..."],"comment":"...","target":"..."}}"""
+
+    try:
+        response = client.models.generate_content(
+            model=model_id,
+            contents=schema_prompt,
+            config=genai_types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.5,
+            ),
+        )
+        text = (response.text or "").strip()
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -200,7 +218,7 @@ def generate_proposal_content_claude(api_key, product_name, price, capacity, con
             text = text[:-3]
         return json.loads(text.strip())
     except Exception as e:
-        logging.error(f"Claude generation failed: {e}")
+        logging.error(f"Gemini structuring failed: {e}")
         return None
 
 # API Endpoints
@@ -221,11 +239,11 @@ async def api_images(request: ImageSearchRequest):
 
 @app.post("/api/generate")
 async def api_generate(request: GenerateProposalRequest):
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
-        raise HTTPException(status_code=500, detail="Anthropic API Key not found")
+        raise HTTPException(status_code=500, detail="Gemini API Key not found")
 
-    data = generate_proposal_content_claude(
+    data = generate_proposal_content_gemini(
         api_key,
         request.product_name,
         request.price,
