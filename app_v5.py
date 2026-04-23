@@ -114,9 +114,11 @@ def search_product_images(product_name, count=20):
         "X-Subscription-Token": api_key,
     }
     params = {
-        "q": f"{product_name} 商品画像",
+        "q": f"{product_name} 商品画像 白背景",
         "count": min(count, 50),
         "search_lang": "jp",
+        "country": "JP",
+        "safesearch": "off",
     }
     try:
         response = requests.get(url, headers=headers, params=params, timeout=15)
