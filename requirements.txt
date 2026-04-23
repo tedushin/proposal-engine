@@ -5,5 +5,4 @@ uvicorn
 python-multipart
 python-dotenv
 requests
-duckduckgo-search
 supabase

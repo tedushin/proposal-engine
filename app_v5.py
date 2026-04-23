@@ -5,7 +5,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from duckduckgo_search import DDGS
 import anthropic
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -101,29 +100,38 @@ def search_product_info(product_name):
         return ""
 
 def search_product_images(product_name, count=20):
-    """Searches for product images using DuckDuckGo Search (DDGS)."""
-    logging.info(f"Searching for {count} images of: {product_name} via DuckDuckGo")
-    
+    """Searches for product images using Brave Image Search API."""
+    logging.info(f"Searching for {count} images of: {product_name} via Brave")
+    api_key = os.environ.get('BRAVE_SEARCH_API_KEY')
+    if not api_key:
+        logging.error("Brave Search API Key not found")
+        return []
+
+    url = "https://api.search.brave.com/res/v1/images/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": api_key,
+    }
+    params = {
+        "q": f"{product_name} 商品画像",
+        "count": min(count, 50),
+        "search_lang": "jp",
+    }
     try:
-        with DDGS(timeout=15) as ddgs:
-            results = [r for r in ddgs.images(
-                f"{product_name} 商品画像 白背景", 
-                region='jp-jp', 
-                safesearch='off', 
-                max_results=count
-            )]
-        
-        if results:
-            image_urls = [r.get('image') for r in results if r.get('image')]
-            logging.info(f"DuckDuckGo found {len(image_urls)} image URLs.")
-            return image_urls
-        else:
-            logging.warning("No images found via DuckDuckGo.")
-            
+        response = requests.get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        results = response.json().get("results", [])
+        urls = []
+        for r in results:
+            u = (r.get("properties") or {}).get("url") or r.get("thumbnail", {}).get("src") or r.get("url")
+            if u:
+                urls.append(u)
+        logging.info(f"Brave found {len(urls)} image URLs.")
+        return urls
     except Exception as e:
-        logging.error(f"DuckDuckGo Image search failed: {e}")
-    
-    return []
+        logging.error(f"Brave image search failed: {e}")
+        return []
 
 def generate_proposal_content_claude(api_key, product_name, price, capacity, context):
     """Generates structured proposal content using Claude Haiku 4.5."""
