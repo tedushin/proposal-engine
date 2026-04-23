@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/static/:path*", "destination": "/static/:path*" },
+    { "source": "/(.*)", "destination": "/api/index.py" }
+  ]
+}

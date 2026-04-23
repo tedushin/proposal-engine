@@ -1,7 +1,9 @@
-google-generativeai
+anthropic
 jinja2
 fastapi
 uvicorn
 python-multipart
 python-dotenv
 requests
+duckduckgo-search
+supabase

@@ -5,3 +5,4 @@ __pycache__/
 archive/
 output/
 .ipynb_checkpoints/
+.vercel/
