@@ -6,3 +6,4 @@ archive/
 output/
 .ipynb_checkpoints/
 .vercel/
+.vercel

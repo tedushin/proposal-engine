@@ -79,8 +79,8 @@ def search_product_info(product_name):
         "X-Subscription-Token": api_key
     }
     params = {
-        "q": f"{product_name} 公式 特徴 レビュー",
-        "count": 5,
+        "q": f"{product_name} 蔵元 産地 原料 味わい 受賞 特徴",
+        "count": 10,
         "country": "jp",
         "search_lang": "jp"
     }
@@ -144,21 +144,29 @@ def generate_proposal_content_gemini(api_key, product_name, price, capacity, con
     model_id = "gemini-2.5-flash"
 
     # Step 1: Research with Google Search grounding
-    research_prompt = f"""あなたは商品リサーチャーです。次の商品について Google検索で最新の正確な情報を収集し、日本語で詳しく整理してください。
+    context_section = f"""
+【事前収集済みの参考情報（Brave Search より）】
+{context}
+
+上記の情報を踏まえつつ、Google検索でさらに詳細・最新の情報を補完してください。
+""" if context else "【事前情報】なし。Google検索で情報を収集してください。"
+
+    research_prompt = f"""あなたは飲料・食品の商品リサーチャーです。次の商品について、提供された参考情報とGoogle検索を組み合わせて正確な情報を収集・整理してください。
 
 【商品名】 {product_name}
 【価格】 {price}
 【容量】 {capacity}
-【参考情報（任意）】 {context or "（なし）"}
+
+{context_section}
 
 調べる項目:
-- 蔵元・メーカー・ブランド
-- 産地（都道府県）
-- 品種/原料・製法
-- 味わい・香り・特徴
-- 受賞歴・評価
+- 蔵元・メーカー・ブランド（正式名称）
+- 産地（都道府県・地域）
+- 品種/原料・製法（使用米・葡萄品種・精米歩合など）
+- 味わい・香り・口当たり・余韻
+- 受賞歴・評価・メディア掲載
 - 推奨される飲み方・料理とのペアリング
-- 想定顧客層
+- 蔵元の歴史・こだわり・ストーリー
 
 箇条書きで、事実ベースで記述してください。不明な項目は「不明」と書いてください。"""
 
